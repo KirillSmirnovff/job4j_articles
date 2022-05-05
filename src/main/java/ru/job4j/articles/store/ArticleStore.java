@@ -31,12 +31,13 @@ public class ArticleStore implements Store<Article>, AutoCloseable {
     private void initConnection() {
         LOGGER.info("Создание подключения к БД статей");
         try {
+            Class.forName(properties.getProperty("driver"));
             connection = DriverManager.getConnection(
                     properties.getProperty("url"),
                     properties.getProperty("username"),
                     properties.getProperty("password")
             );
-        } catch (SQLException throwables) {
+        } catch (SQLException | ClassNotFoundException throwables) {
             LOGGER.error("Не удалось выполнить операцию: { }", throwables.getCause());
             throw new IllegalStateException();
         }
@@ -54,21 +55,16 @@ public class ArticleStore implements Store<Article>, AutoCloseable {
     }
 
     @Override
-    public Article save(Article model) {
+    public void save(Article model) {
         LOGGER.info("Сохранение статьи");
         var sql = "insert into articles(text) values(?)";
-        try (var statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (var statement = connection.prepareStatement(sql)) {
             statement.setString(1, model.getText());
             statement.executeUpdate();
-            var key = statement.getGeneratedKeys();
-            while (key.next()) {
-                model.setId(key.getInt(1));
-            }
         } catch (Exception e) {
             LOGGER.error("Не удалось выполнить операцию: { }", e.getCause());
             throw new IllegalStateException();
         }
-        return model;
     }
 
     @Override
